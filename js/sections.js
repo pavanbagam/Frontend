@@ -1,5 +1,62 @@
 const BASE_URL = "http://localhost:8080";
 
+let allPlayers = [];
+let uniqueFirstNames = [];
+let uniqueLastNames = [];
+
+function loadAllPlayers() {
+  fetch(`${BASE_URL}/players`)
+    .then(res => res.json())
+    .then(players => {
+      allPlayers = players;
+      uniqueFirstNames = [...new Set(players.map(p => p.fName))];
+      uniqueLastNames = [...new Set(players.map(p => p.lName))];
+    });
+}
+
+function filterFirstNames() {
+  const input = document.getElementById("fNameInput");
+  const query = input.value.toLowerCase();
+  const suggestionBox = document.getElementById("fNameSuggestions");
+
+  suggestionBox.innerHTML = "";
+  if (!query) return;
+
+  const matches = uniqueFirstNames.filter(name => name.toLowerCase().startsWith(query));
+
+  matches.forEach(name => {
+    const div = document.createElement("div");
+    div.textContent = name;
+    div.onclick = () => {
+      input.value = name;
+      suggestionBox.innerHTML = "";
+    };
+    suggestionBox.appendChild(div);
+  });
+}
+
+function filterLastNames() {
+  const input = document.getElementById("lNameInput");
+  const query = input.value.toLowerCase();
+  const suggestionBox = document.getElementById("lNameSuggestions");
+
+  suggestionBox.innerHTML = "";
+  if (!query) return;
+
+  const matches = uniqueLastNames.filter(name => name.toLowerCase().startsWith(query));
+
+  matches.forEach(name => {
+    const div = document.createElement("div");
+    div.textContent = name;
+    div.onclick = () => {
+      input.value = name;
+      suggestionBox.innerHTML = "";
+    };
+    suggestionBox.appendChild(div);
+  });
+}
+
+
 // Unified API functions
 function fetchGames() {
   return fetch(`${BASE_URL}/games`).then(res => res.json());
@@ -24,6 +81,8 @@ function postDelivery(delivery) {
   });
 }
 
+
+
 // Section router
 function showSection(section) {
   const container = document.getElementById("main-content");
@@ -43,15 +102,28 @@ function showSection(section) {
         });
       break;
 
-    case 'profile':
+      case 'profile':
       container.innerHTML = `
         <h2>Search Player Profile</h2>
-        <input type="text" id="fNameInput" placeholder="First Name" />
-        <input type="text" id="lNameInput" placeholder="Last Name" />
-        <button onclick="searchPlayer()">Search</button>
+        <div style="display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+          <div style="position: relative;">
+            <input type="text" id="fNameInput" placeholder="First Name" oninput="filterFirstNames()" autocomplete="off" />
+            <div id="fNameSuggestions" class="autocomplete-suggestions"></div>
+          </div>
+          <div style="position: relative;">
+            <input type="text" id="lNameInput" placeholder="Last Name" oninput="filterLastNames()" autocomplete="off" />
+            <div id="lNameSuggestions" class="autocomplete-suggestions"></div>
+          </div>
+          <div>
+            <button onclick="searchPlayer()">Search</button>
+          </div>
+        </div>
         <div id="profileResult" style="margin-top: 1rem;"></div>
       `;
+      loadAllPlayers();
       break;
+
+      
 
     case 'performance':
       container.innerHTML = `
@@ -147,6 +219,8 @@ function renderGames(container, games, title = "Matches") {
     });
   }
   
+  
+
   function showMatchCenter(matchId) {
     fetchGameById(matchId)
       .then(match => {

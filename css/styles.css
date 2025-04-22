@@ -31,3 +31,23 @@ nav button:hover {
   padding: 1rem;
   margin-bottom: 1rem;
 }
+
+
+.autocomplete-suggestions {
+  position: absolute;
+  border: 1px solid #ccc;
+  background: white;
+  z-index: 1000;
+  max-height: 150px;
+  overflow-y: auto;
+  width: 200px;
+}
+
+.autocomplete-suggestions div {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.autocomplete-suggestions div:hover {
+  background-color: #eee;
+}
