@@ -56,6 +56,49 @@ function filterLastNames() {
   });
 }
 
+function filterPerformanceFirstNames() {
+  const input = document.getElementById("perfFName");
+  const query = input.value.toLowerCase();
+  const suggestionBox = document.getElementById("perfFNameSuggestions");
+
+  suggestionBox.innerHTML = "";
+  if (!query) return;
+
+  const matches = uniqueFirstNames.filter(name => name.toLowerCase().startsWith(query));
+
+  matches.forEach(name => {
+    const div = document.createElement("div");
+    div.textContent = name;
+    div.onclick = () => {
+      input.value = name;
+      suggestionBox.innerHTML = "";
+    };
+    suggestionBox.appendChild(div);
+  });
+}
+
+function filterPerformanceLastNames() {
+  const input = document.getElementById("perfLName");
+  const query = input.value.toLowerCase();
+  const suggestionBox = document.getElementById("perfLNameSuggestions");
+
+  suggestionBox.innerHTML = "";
+  if (!query) return;
+
+  const matches = uniqueLastNames.filter(name => name.toLowerCase().startsWith(query));
+
+  matches.forEach(name => {
+    const div = document.createElement("div");
+    div.textContent = name;
+    div.onclick = () => {
+      input.value = name;
+      suggestionBox.innerHTML = "";
+    };
+    suggestionBox.appendChild(div);
+  });
+}
+
+
 
 // Unified API functions
 function fetchGames() {
@@ -125,15 +168,27 @@ function showSection(section) {
 
       
 
-    case 'performance':
-      container.innerHTML = `
-        <h2>Search Player Performance</h2>
-        <input type="text" id="perfFName" placeholder="First Name" />
-        <input type="text" id="perfLName" placeholder="Last Name" />
-        <button onclick="searchPerformance()">Search</button>
-        <div id="performanceResult" style="margin-top: 1rem;"></div>
-      `;
-      break;
+      case 'performance':
+        container.innerHTML = `
+          <h2>Search Player Performance</h2>
+          <div style="display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+            <div style="position: relative;">
+              <input type="text" id="perfFName" placeholder="First Name" oninput="filterPerformanceFirstNames()" autocomplete="off" />
+              <div id="perfFNameSuggestions" class="autocomplete-suggestions"></div>
+            </div>
+            <div style="position: relative;">
+              <input type="text" id="perfLName" placeholder="Last Name" oninput="filterPerformanceLastNames()" autocomplete="off" />
+              <div id="perfLNameSuggestions" class="autocomplete-suggestions"></div>
+            </div>
+            <div>
+              <button onclick="searchPerformance()">Search</button>
+            </div>
+          </div>
+          <div id="performanceResult" style="margin-top: 1rem;"></div>
+        `;
+        loadAllPlayers();
+        break;
+      
 
     case 'scorer':
       container.innerHTML = `
