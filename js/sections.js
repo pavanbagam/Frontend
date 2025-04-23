@@ -240,6 +240,40 @@ function showSection(section) {
 
             <hr />
 
+            <!-- MATCH CREATION -->
+            <h3>Create Match</h3>
+            <form id="gameForm">
+              <label>Match Date:</label><br />
+              <input type="date" id="gameDate" required /><br /><br />
+
+              <label>Venue:</label><br />
+              <input type="text" id="venue" required /><br /><br />
+
+              <label>Match Type:</label><br />
+              <input type="text" id="type" placeholder="ODI, T20, Test" required /><br /><br />
+
+              <label>Umpire:</label><br />
+              <input type="text" id="umpire" required /><br /><br />
+
+              <label>Team 1:</label><br />
+              <select id="team1" required></select><br /><br />
+
+              <label>Team 2:</label><br />
+              <select id="team2" required></select><br /><br />
+
+              <label>Toss Winner:</label><br />
+              <select id="tossWinner" required></select><br /><br />
+
+              <label>Tournament ID (optional):</label><br />
+              <input type="number" id="tournamentId" /><br /><br />
+
+              <button type="submit">Create Match</button>
+            </form>
+            <div id="gameMessage" style="margin-top:1rem;"></div>
+
+
+            <hr />
+
             <!-- DELIVERY CREATION -->
             <h3>Add Delivery</h3>
             <form id="scorerForm">
@@ -393,6 +427,60 @@ function showSection(section) {
                 document.getElementById("squadMessage").innerHTML = `<p style="color:red;">${err.message}</p>`;
               });
           };
+
+          // === MATCH CREATION ===
+          fetch(`${BASE_URL}/teams`)
+          .then(res => res.json())
+          .then(teams => {
+            const team1Sel = document.getElementById("team1");
+            const team2Sel = document.getElementById("team2");
+            const tossSel = document.getElementById("tossWinner");
+
+            teams.forEach(team => {
+              const opt1 = new Option(team.name, team.teamId);
+              const opt2 = new Option(team.name, team.teamId);
+              const optToss = new Option(team.name, team.teamId);
+
+              team1Sel.appendChild(opt1);
+              team2Sel.appendChild(opt2);
+              tossSel.appendChild(optToss);
+            });
+          });
+
+          document.getElementById("gameForm").onsubmit = function (e) {
+            e.preventDefault();
+          
+            const game = {
+              date: document.getElementById("gameDate").value,
+              venue: document.getElementById("venue").value,
+              type: document.getElementById("type").value,
+              umpire: document.getElementById("umpire").value,
+              tossWinnerId: parseInt(document.getElementById("tossWinner").value),
+              tournament: document.getElementById("tournamentId").value
+                ? { tournamentId: parseInt(document.getElementById("tournamentId").value) }
+                : null,
+              team1: { teamId: parseInt(document.getElementById("team1").value) },
+              team2: { teamId: parseInt(document.getElementById("team2").value) }
+            };
+          
+            fetch(`${BASE_URL}/games`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(game)
+            })
+              .then(res => {
+                if (!res.ok) throw new Error("Failed to create game");
+                return res.json();
+              })
+              .then(data => {
+                document.getElementById("gameMessage").innerHTML = `<p style="color:green;">Match created (ID: ${data.gameId})</p>`;
+                showSection("scorer");
+              })
+              .catch(err => {
+                document.getElementById("gameMessage").innerHTML = `<p style="color:red;">${err.message}</p>`;
+              });
+          };
+          
 
           // === DELIVERY CREATION ===
           document.getElementById("scorerForm").onsubmit = function (e) {
