@@ -192,7 +192,56 @@ function showSection(section) {
 
         case 'scorer':
           container.innerHTML = `
-            <h2>Scorer - Add Delivery</h2>
+            <h2>Scorer Section</h2>
+
+            <!-- TEAM CREATION -->
+            <h3>Create Team</h3>
+            <form id="teamForm">
+              <input type="text" id="teamName" placeholder="Team Name *" required />
+              <input type="text" id="teamCountry" placeholder="Country" />
+              <input type="text" id="teamCoach" placeholder="Coach" />
+              <input type="text" id="teamCaptain" placeholder="Captain" />
+              <button type="submit">Create Team</button>
+            </form>
+            <div id="teamMessage" style="margin-top:1rem;"></div>
+            <ul id="teamList"></ul>
+
+            <hr />
+
+            <!-- PLAYER CREATION -->
+            <h3>Create Player</h3>
+            <form id="playerForm">
+              <input type="text" id="fName" placeholder="First Name *" required />
+              <input type="text" id="lName" placeholder="Last Name *" required />
+              <input type="text" id="role" placeholder="Role (e.g., Batsman)" required />
+              <input type="date" id="dob" placeholder="Date of Birth *" required />
+              <button type="submit">Create Player</button>
+            </form>
+            <div id="playerMessage" style="margin-top:1rem;"></div>
+
+
+            <hr />
+
+            <!-- SQUAD CREATION -->
+            <h3>Create Squad</h3>
+            <form id="squadForm">
+              <label>Select Team:</label><br />
+              <select id="teamSelect" required></select><br /><br />
+
+              <label>Select Tournament ID (optional):</label><br />
+              <input type="number" id="tournamentId" /><br /><br />
+
+              <label>Select Players:</label><br />
+              <select id="playerSelect" multiple size="8" required></select><br /><br />
+
+              <button type="submit">Add to Squad</button>
+            </form>
+            <div id="squadMessage" style="margin-top:1rem;"></div>
+
+            <hr />
+
+            <!-- DELIVERY CREATION -->
+            <h3>Add Delivery</h3>
             <form id="scorerForm">
               <input type="number" id="inningId" placeholder="Inning ID" required /><br />
               <input type="number" id="batsmanId" placeholder="Batsman ID" required /><br />
@@ -208,24 +257,144 @@ function showSection(section) {
               <button type="submit">Add Delivery</button>
             </form>
             <div id="scorerResult" style="margin-top:1rem;"></div>
-        
-            <hr>
-        
-            <h2>Create Team (for reference/use in scoring)</h2>
-            <form id="teamForm">
-              <input type="text" id="teamName" placeholder="Team Name *" required />
-              <input type="text" id="teamCountry" placeholder="Country" />
-              <input type="text" id="teamCoach" placeholder="Coach" />
-              <input type="text" id="teamCaptain" placeholder="Captain" />
-              <button type="submit">Create Team</button>
-            </form>
-            <div id="teamMessage" style="margin-top:1rem;"></div>
-        
-            <h3>Existing Teams</h3>
-            <ul id="teamList"></ul>
           `;
-        
-          // Handle delivery form submit
+
+          // === TEAM CREATION ===
+          document.getElementById("teamForm").onsubmit = function (e) {
+            e.preventDefault();
+            const newTeam = {
+              name: document.getElementById("teamName").value.trim(),
+              country: document.getElementById("teamCountry").value.trim(),
+              coach: document.getElementById("teamCoach").value.trim(),
+              captain: document.getElementById("teamCaptain").value.trim()
+            };
+
+            fetch(`${BASE_URL}/teams`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(newTeam)
+            })
+              .then(res => {
+                if (!res.ok) throw new Error("Failed to create team (check if name already exists)");
+                return res.json();
+              })
+              .then(data => {
+                document.getElementById("teamMessage").innerHTML = `<p style="color:green;">Team created: ${data.name}</p>`;
+                showSection("scorer");
+              })
+              .catch(err => {
+                document.getElementById("teamMessage").innerHTML = `<p style="color:red;">${err.message}</p>`;
+              });
+          };
+
+          // Load team list
+          fetch(`${BASE_URL}/teams`)
+            .then(res => res.json())
+            .then(teams => {
+              const list = document.getElementById("teamList");
+              teams.forEach(team => {
+                const li = document.createElement("li");
+                li.textContent = `${team.name} (${team.country || "N/A"}) - Coach: ${team.coach || "N/A"}, Captain: ${team.captain || "N/A"}`;
+                list.appendChild(li);
+
+                const squadTeamOption = document.createElement("option");
+                squadTeamOption.value = team.teamId;
+                squadTeamOption.textContent = `${team.name} (${team.country})`;
+                document.getElementById("teamSelect").appendChild(squadTeamOption);
+              });
+            });
+          // === PLAYER CREATION ===
+            document.getElementById("playerForm").onsubmit = function (e) {
+              e.preventDefault();
+            
+              const fName = document.getElementById("fName").value.trim();
+              const lName = document.getElementById("lName").value.trim();
+              const role = document.getElementById("role").value.trim();
+              const dob = document.getElementById("dob").value;
+            
+              if (!fName || !lName || !role || !dob) {
+                document.getElementById("playerMessage").innerHTML = `<p style="color:red;">All fields are required.</p>`;
+                return;
+              }
+            
+              const newPlayer = {
+                fName,
+                lName,
+                role,
+                dob // ISO date format from <input type="date" /> works fine
+              };
+            
+              fetch(`${BASE_URL}/players`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newPlayer)
+              })
+                .then(res => {
+                  if (!res.ok) throw new Error("Failed to create player");
+                  return res.json();
+                })
+                .then(data => {
+                  document.getElementById("playerMessage").innerHTML = `<p style="color:green;">Player created: ${data.fName} ${data.lName}</p>`;
+                  showSection("scorer"); // refresh form + squad dropdown
+                })
+                .catch(err => {
+                  document.getElementById("playerMessage").innerHTML = `<p style="color:red;">${err.message}</p>`;
+                });
+            };
+            
+          // === SQUAD CREATION ===
+          fetch(`${BASE_URL}/players`)
+            .then(res => res.json())
+            .then(players => {
+              const playerSelect = document.getElementById("playerSelect");
+              players.forEach(player => {
+                const option = document.createElement("option");
+                option.value = player.playerId;
+                option.textContent = `${player.fName} ${player.lName}`;
+                playerSelect.appendChild(option);
+              });
+            });
+
+          document.getElementById("squadForm").onsubmit = function (e) {
+            e.preventDefault();
+            const teamId = parseInt(document.getElementById("teamSelect").value);
+            const tournamentId = document.getElementById("tournamentId").value.trim();
+            const selectedPlayerIds = [...document.getElementById("playerSelect").selectedOptions]
+              .map(opt => parseInt(opt.value));
+
+            if (!selectedPlayerIds.length) {
+              document.getElementById("squadMessage").innerHTML = `<p style="color:red;">Please select at least one player.</p>`;
+              return;
+            }
+
+            const requests = selectedPlayerIds.map(playerId => {
+              const squadObj = {
+                team: { teamId },
+                player: { playerId },
+                tournamentId: tournamentId ? parseInt(tournamentId) : null
+              };
+
+              return fetch(`${BASE_URL}/squads`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(squadObj)
+              });
+            });
+
+            Promise.all(requests)
+              .then(responses => {
+                if (responses.some(res => !res.ok)) throw new Error("Some squad entries failed");
+                return Promise.all(responses.map(res => res.json()));
+              })
+              .then(data => {
+                document.getElementById("squadMessage").innerHTML = `<p style="color:green;">Squad created with ${data.length} players.</p>`;
+              })
+              .catch(err => {
+                document.getElementById("squadMessage").innerHTML = `<p style="color:red;">${err.message}</p>`;
+              });
+          };
+
+          // === DELIVERY CREATION ===
           document.getElementById("scorerForm").onsubmit = function (e) {
             e.preventDefault();
             const delivery = {
@@ -249,47 +418,8 @@ function showSection(section) {
                 document.getElementById("scorerResult").innerHTML = `<p style="color:red;">${err.message}</p>`;
               });
           };
-        
-          // Handle team creation
-          document.getElementById("teamForm").onsubmit = function (e) {
-            e.preventDefault();
-            const newTeam = {
-              name: document.getElementById("teamName").value.trim(),
-              country: document.getElementById("teamCountry").value.trim(),
-              coach: document.getElementById("teamCoach").value.trim(),
-              captain: document.getElementById("teamCaptain").value.trim()
-            };
-        
-            fetch(`${BASE_URL}/teams`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(newTeam)
-            })
-              .then(res => {
-                if (!res.ok) throw new Error("Failed to create team (check if name already exists)");
-                return res.json();
-              })
-              .then(data => {
-                document.getElementById("teamMessage").innerHTML = `<p style="color:green;">Team created: ${data.name}</p>`;
-                showSection("scorer"); // refresh section to reload team list
-              })
-              .catch(err => {
-                document.getElementById("teamMessage").innerHTML = `<p style="color:red;">${err.message}</p>`;
-              });
-          };
-        
-          // Load existing teams
-          fetch(`${BASE_URL}/teams`)
-            .then(res => res.json())
-            .then(teams => {
-              const list = document.getElementById("teamList");
-              teams.forEach(team => {
-                const li = document.createElement("li");
-                li.textContent = `${team.name} (${team.country || "N/A"}) - Coach: ${team.coach || "N/A"}, Captain: ${team.captain || "N/A"}`;
-                list.appendChild(li);
-              });
-            });
           break;
+
         
   }
 }
