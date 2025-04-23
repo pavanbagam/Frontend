@@ -243,6 +243,9 @@ function showSection(section) {
             <!-- MATCH CREATION -->
             <h3>Create Match</h3>
             <form id="gameForm">
+
+              <label>Match Code <small style="color:#888">(e.g. 20250423IndiaVSAustralia1)</small>:</label><br />
+              <input type="text" id="matchCode" placeholder="YYYYMMDDTeam1VSTeam2X" required /><br /><br />
               <label>Match Date:</label><br />
               <input type="date" id="gameDate" required /><br /><br />
 
@@ -451,17 +454,25 @@ function showSection(section) {
             e.preventDefault();
           
             const game = {
+              matchCode : document.getElementById("matchCode").value.trim(),
               date: document.getElementById("gameDate").value,
               venue: document.getElementById("venue").value,
               type: document.getElementById("type").value,
               umpire: document.getElementById("umpire").value,
-              tossWinnerId: parseInt(document.getElementById("tossWinner").value),
+              tossWinner   : { teamId: parseInt(document.getElementById("tossWinner").value) },
               tournament: document.getElementById("tournamentId").value
                 ? { tournamentId: parseInt(document.getElementById("tournamentId").value) }
                 : null,
               team1: { teamId: parseInt(document.getElementById("team1").value) },
               team2: { teamId: parseInt(document.getElementById("team2").value) }
             };
+
+            const pattern = /^\d{8}.+VS.+\w+$/i;     // simple check
+            if (!pattern.test(game.matchCode)) {
+              document.getElementById("gameMessage").innerHTML =
+                  `<p style="color:red;">Match Code must follow YYYYMMDD&ltem1&gtVS&ltem2&gt&ltNbr&gt</p>`;
+              return;
+            }
           
             fetch(`${BASE_URL}/games`, {
               method: "POST",
@@ -540,11 +551,14 @@ function renderGames(container, games, title = "Matches") {
       });
   
       card.innerHTML = `
+        <h4>${game.matchCode || "Match " + game.gameId}</h4>
+        <p><strong>${game.team1?.name ?? "Team 1"} vs ${game.team2?.name ?? "Team 2"}</strong></p>
+        <p><strong>Date:</strong> ${game.date ? new Date(game.date).toLocaleString() : "N/A"}</p>
         <p><strong>Venue:</strong> ${game.venue || "N/A"}</p>
         <p><strong>Type:</strong> ${game.type || "N/A"}</p>
-        <p><strong>Date:</strong> ${game.date ? new Date(game.date).toLocaleString() : "N/A"}</p>
         <p><strong>Umpire:</strong> ${game.umpire || "N/A"}</p>
-      `;
+        ${game.tossWinner ? `<p><strong>Toss:</strong> ${game.tossWinner.name}</p>` : ""}
+   `;
   
       container.appendChild(card);
     });
