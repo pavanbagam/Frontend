@@ -190,49 +190,107 @@ function showSection(section) {
         break;
       
 
-    case 'scorer':
-      container.innerHTML = `
-        <h2>Scorer - Add Delivery</h2>
-        <form id="scorerForm">
-          <input type="number" id="inningId" placeholder="Inning ID" required /><br />
-          <input type="number" id="batsmanId" placeholder="Batsman ID" required /><br />
-          <input type="number" id="bowlerId" placeholder="Bowler ID" required /><br />
-          <input type="number" id="nonStrikerId" placeholder="Non-Striker ID (optional)" /><br />
-          <input type="number" id="fielderId" placeholder="Fielder ID (optional)" /><br />
-          <input type="number" id="runsScored" placeholder="Runs Scored" required /><br />
-          <label><input type="checkbox" id="isWicket" /> Wicket</label><br />
-          <input type="text" id="dismissalType" placeholder="Dismissal Type (if out)" /><br />
-          <input type="number" id="ballNumber" placeholder="Ball Number" required /><br />
-          <input type="number" id="overNumber" placeholder="Over Number" required /><br />
-          <label><input type="checkbox" id="wideOrNoBall" /> Wide or No Ball</label><br /><br />
-          <button type="submit">Add Delivery</button>
-        </form>
-        <div id="scorerResult" style="margin-top:1rem;"></div>
-      `;
-      document.getElementById("scorerForm").onsubmit = function (e) {
-        e.preventDefault();
-        const delivery = {
-          inning: { inningId: parseInt(document.getElementById("inningId").value) },
-          batsman: { playerId: parseInt(document.getElementById("batsmanId").value) },
-          bowler: { playerId: parseInt(document.getElementById("bowlerId").value) },
-          nonStriker: document.getElementById("nonStrikerId").value ? { playerId: parseInt(document.getElementById("nonStrikerId").value) } : null,
-          fielder: document.getElementById("fielderId").value ? { playerId: parseInt(document.getElementById("fielderId").value) } : null,
-          runsScored: parseInt(document.getElementById("runsScored").value),
-          isWicket: document.getElementById("isWicket").checked,
-          dismissalType: document.getElementById("dismissalType").value || null,
-          ballNumber: parseInt(document.getElementById("ballNumber").value),
-          overNumber: parseInt(document.getElementById("overNumber").value),
-          wideOrNoBall: document.getElementById("wideOrNoBall").checked
-        };
-        postDelivery(delivery)
-          .then(data => {
-            document.getElementById("scorerResult").innerHTML = `<p style="color:green;">Delivery added successfully! ID: ${data.deliveryId}</p>`;
-          })
-          .catch(err => {
-            document.getElementById("scorerResult").innerHTML = `<p style="color:red;">${err.message}</p>`;
-          });
-      };
-      break;
+        case 'scorer':
+          container.innerHTML = `
+            <h2>Scorer - Add Delivery</h2>
+            <form id="scorerForm">
+              <input type="number" id="inningId" placeholder="Inning ID" required /><br />
+              <input type="number" id="batsmanId" placeholder="Batsman ID" required /><br />
+              <input type="number" id="bowlerId" placeholder="Bowler ID" required /><br />
+              <input type="number" id="nonStrikerId" placeholder="Non-Striker ID (optional)" /><br />
+              <input type="number" id="fielderId" placeholder="Fielder ID (optional)" /><br />
+              <input type="number" id="runsScored" placeholder="Runs Scored" required /><br />
+              <label><input type="checkbox" id="isWicket" /> Wicket</label><br />
+              <input type="text" id="dismissalType" placeholder="Dismissal Type (if out)" /><br />
+              <input type="number" id="ballNumber" placeholder="Ball Number" required /><br />
+              <input type="number" id="overNumber" placeholder="Over Number" required /><br />
+              <label><input type="checkbox" id="wideOrNoBall" /> Wide or No Ball</label><br /><br />
+              <button type="submit">Add Delivery</button>
+            </form>
+            <div id="scorerResult" style="margin-top:1rem;"></div>
+        
+            <hr>
+        
+            <h2>Create Team (for reference/use in scoring)</h2>
+            <form id="teamForm">
+              <input type="text" id="teamName" placeholder="Team Name *" required />
+              <input type="text" id="teamCountry" placeholder="Country" />
+              <input type="text" id="teamCoach" placeholder="Coach" />
+              <input type="text" id="teamCaptain" placeholder="Captain" />
+              <button type="submit">Create Team</button>
+            </form>
+            <div id="teamMessage" style="margin-top:1rem;"></div>
+        
+            <h3>Existing Teams</h3>
+            <ul id="teamList"></ul>
+          `;
+        
+          // Handle delivery form submit
+          document.getElementById("scorerForm").onsubmit = function (e) {
+            e.preventDefault();
+            const delivery = {
+              inning: { inningId: parseInt(document.getElementById("inningId").value) },
+              batsman: { playerId: parseInt(document.getElementById("batsmanId").value) },
+              bowler: { playerId: parseInt(document.getElementById("bowlerId").value) },
+              nonStriker: document.getElementById("nonStrikerId").value ? { playerId: parseInt(document.getElementById("nonStrikerId").value) } : null,
+              fielder: document.getElementById("fielderId").value ? { playerId: parseInt(document.getElementById("fielderId").value) } : null,
+              runsScored: parseInt(document.getElementById("runsScored").value),
+              isWicket: document.getElementById("isWicket").checked,
+              dismissalType: document.getElementById("dismissalType").value || null,
+              ballNumber: parseInt(document.getElementById("ballNumber").value),
+              overNumber: parseInt(document.getElementById("overNumber").value),
+              wideOrNoBall: document.getElementById("wideOrNoBall").checked
+            };
+            postDelivery(delivery)
+              .then(data => {
+                document.getElementById("scorerResult").innerHTML = `<p style="color:green;">Delivery added successfully! ID: ${data.deliveryId}</p>`;
+              })
+              .catch(err => {
+                document.getElementById("scorerResult").innerHTML = `<p style="color:red;">${err.message}</p>`;
+              });
+          };
+        
+          // Handle team creation
+          document.getElementById("teamForm").onsubmit = function (e) {
+            e.preventDefault();
+            const newTeam = {
+              name: document.getElementById("teamName").value.trim(),
+              country: document.getElementById("teamCountry").value.trim(),
+              coach: document.getElementById("teamCoach").value.trim(),
+              captain: document.getElementById("teamCaptain").value.trim()
+            };
+        
+            fetch(`${BASE_URL}/teams`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(newTeam)
+            })
+              .then(res => {
+                if (!res.ok) throw new Error("Failed to create team (check if name already exists)");
+                return res.json();
+              })
+              .then(data => {
+                document.getElementById("teamMessage").innerHTML = `<p style="color:green;">Team created: ${data.name}</p>`;
+                showSection("scorer"); // refresh section to reload team list
+              })
+              .catch(err => {
+                document.getElementById("teamMessage").innerHTML = `<p style="color:red;">${err.message}</p>`;
+              });
+          };
+        
+          // Load existing teams
+          fetch(`${BASE_URL}/teams`)
+            .then(res => res.json())
+            .then(teams => {
+              const list = document.getElementById("teamList");
+              teams.forEach(team => {
+                const li = document.createElement("li");
+                li.textContent = `${team.name} (${team.country || "N/A"}) - Coach: ${team.coach || "N/A"}, Captain: ${team.captain || "N/A"}`;
+                list.appendChild(li);
+              });
+            });
+          break;
+        
   }
 }
 
