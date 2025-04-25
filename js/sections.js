@@ -274,26 +274,67 @@ function showSection(section) {
             </form>
             <div id="gameMessage" style="margin-top:1rem;"></div>
 
+            
+            <hr />
+
+            <!-- INNING CREATION -->
+            <h3>Create Inning</h3>
+            <form id="inningForm">
+              <!-- ❶ Match selector (shows matchCode) -->
+              <label>Select Match (matchCode):</label><br />
+              <select id="matchSelect" required></select><br /><br />
+
+              <!-- ❷ Team selector – will be repopulated whenever match changes -->
+              <label>Batting Team:</label><br />
+              <select id="inningTeamSelect" required></select><br /><br />
+
+              <!-- ❸ Hidden / auto‑filled fields -->
+              <input type="hidden" id="initRuns"  value="0" />
+              <input type="hidden" id="initDeliv" value="0" />
+              <input type="hidden" id="initWkts"  value="0" />
+
+              <button type="submit">Create Inning</button>
+            </form>
+            <div id="inningMsg" style="margin-top:1rem;"></div>
 
             <hr />
 
-            <!-- DELIVERY CREATION -->
+
+            <!-- DELIVERY CREATION  (new, match‑aware) -->
             <h3>Add Delivery</h3>
-            <form id="scorerForm">
-              <input type="number" id="inningId" placeholder="Inning ID" required /><br />
-              <input type="number" id="batsmanId" placeholder="Batsman ID" required /><br />
-              <input type="number" id="bowlerId" placeholder="Bowler ID" required /><br />
-              <input type="number" id="nonStrikerId" placeholder="Non-Striker ID (optional)" /><br />
-              <input type="number" id="fielderId" placeholder="Fielder ID (optional)" /><br />
-              <input type="number" id="runsScored" placeholder="Runs Scored" required /><br />
-              <label><input type="checkbox" id="isWicket" /> Wicket</label><br />
-              <input type="text" id="dismissalType" placeholder="Dismissal Type (if out)" /><br />
-              <input type="number" id="ballNumber" placeholder="Ball Number" required /><br />
-              <input type="number" id="overNumber" placeholder="Over Number" required /><br />
-              <label><input type="checkbox" id="wideOrNoBall" /> Wide or No Ball</label><br /><br />
+            <form id="deliveryForm">
+              <!-- a)  Match & inning -->
+              <label>Match (matchCode)</label><br/>
+              <select id="dMatchSel" required></select><br/><br/>
+
+              <label>Batting Inning (team)</label><br/>
+              <select id="dInningSel" required></select><br/><br/>
+
+              <!-- b)  4 player drop‑downs -->
+              <label>Striker</label><br/>
+              <select id="strikerSel" required></select><br/><br/>
+
+              <label>Non‑Striker</label><br/>
+              <select id="nonStrikerSel" required></select><br/><br/>
+
+              <label>Bowler</label><br/>
+              <select id="bowlerSel" required></select><br/><br/>
+
+              <label>Fielder (optional)</label><br/>
+              <select id="fielderSel"><option value="">– None –</option></select><br/><br/>
+
+              <!-- c)  delivery details -->
+              <input type="number" id="runsScored" placeholder="Runs Scored" value="0" required /><br/>
+              <label><input type="checkbox" id="isWicket" /> Wicket</label><br/>
+              <input type="text" id="dismissalType" placeholder="Dismissal Type (if out)" /><br/>
+              <input type="number" id="ballNumber" placeholder="Ball #" required /><br/>
+              <input type="number" id="overNumber" placeholder="Over #" required /><br/>
+              <label><input type="checkbox" id="wideOrNoBall" /> Wide / No‑Ball</label><br/><br/>
+
               <button type="submit">Add Delivery</button>
             </form>
-            <div id="scorerResult" style="margin-top:1rem;"></div>
+            <div id="deliveryMsg" style="margin-top:1rem;"></div>
+
           `;
 
           // === TEAM CREATION ===
@@ -492,31 +533,211 @@ function showSection(section) {
               });
           };
           
+          // === INNING CREATION ===
+          /* ------------  INNING  JS  ------------- */
+          // 1.  Populate the match dropdown with matchCode
+          fetch(`${BASE_URL}/games`)
+          .then(r => r.json())
+          .then(games => {
+            const matchSel = document.getElementById("matchSelect");
+            games.forEach(g => {
+              const opt = new Option(g.matchCode, g.gameId);   // value = gameId
+              matchSel.appendChild(opt);
+            });
+            // trigger first‑time load of team list
+            if (games.length) matchSel.dispatchEvent(new Event("change"));
+          });
 
-          // === DELIVERY CREATION ===
-          document.getElementById("scorerForm").onsubmit = function (e) {
-            e.preventDefault();
-            const delivery = {
-              inning: { inningId: parseInt(document.getElementById("inningId").value) },
-              batsman: { playerId: parseInt(document.getElementById("batsmanId").value) },
-              bowler: { playerId: parseInt(document.getElementById("bowlerId").value) },
-              nonStriker: document.getElementById("nonStrikerId").value ? { playerId: parseInt(document.getElementById("nonStrikerId").value) } : null,
-              fielder: document.getElementById("fielderId").value ? { playerId: parseInt(document.getElementById("fielderId").value) } : null,
-              runsScored: parseInt(document.getElementById("runsScored").value),
-              isWicket: document.getElementById("isWicket").checked,
-              dismissalType: document.getElementById("dismissalType").value || null,
-              ballNumber: parseInt(document.getElementById("ballNumber").value),
-              overNumber: parseInt(document.getElementById("overNumber").value),
-              wideOrNoBall: document.getElementById("wideOrNoBall").checked
-            };
-            postDelivery(delivery)
-              .then(data => {
-                document.getElementById("scorerResult").innerHTML = `<p style="color:green;">Delivery added successfully! ID: ${data.deliveryId}</p>`;
-              })
-              .catch(err => {
-                document.getElementById("scorerResult").innerHTML = `<p style="color:red;">${err.message}</p>`;
+          // 2.  When a match is picked, load its two teams into the team dropdown
+          document.getElementById("matchSelect").onchange = function () {
+          const gameId = parseInt(this.value);
+          if (!gameId) return;
+
+          // fetch the single game to know its teams
+          fetch(`${BASE_URL}/games/${gameId}`)
+            .then(r => r.json())
+            .then(game => {
+              const teamSel   = document.getElementById("inningTeamSelect");
+              teamSel.innerHTML = "";                         // clear old entries
+
+              // helper to add <option> and then fetch squad size for that team
+              const addTeamOption = (teamObj) => {
+                const opt = new Option(teamObj.name || `Team ${teamObj.teamId}`,
+                                      teamObj.teamId);
+                teamSel.appendChild(opt);
+              };
+
+              addTeamOption(game.team1);
+              addTeamOption(game.team2);
+
+              // fire change so squad‑size logic below runs for first team
+              teamSel.dispatchEvent(new Event("change"));
+            });
+          };
+
+          // 3.  When batting‑team changes, look up squad size → wickets
+          document.getElementById("inningTeamSelect").onchange = function () {
+          const teamId = parseInt(this.value);
+          if (!teamId) return;
+
+          fetch(`${BASE_URL}/squads/count?teamId=` + teamId)
+            .then(r => r.json())
+            .then(count => {
+              document.getElementById("initWkts").value = count;
+            })
+            .catch(() => { document.getElementById("initWkts").value = 0; });
+          };
+
+          // 4.  Save inning
+          document.getElementById("inningForm").onsubmit = function (e) {
+          e.preventDefault();
+
+          const body = {
+            game: { gameId: parseInt(document.getElementById("matchSelect").value) },
+            team: { teamId: parseInt(document.getElementById("inningTeamSelect").value) },
+            totalRuns:    parseInt(document.getElementById("initRuns").value),
+            deliveries:   parseInt(document.getElementById("initDeliv").value),
+            wickets:      parseInt(document.getElementById("initWkts").value),
+            overs:        0                                   // start at 0 overs
+          };
+
+          fetch(`${BASE_URL}/innings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          })
+            .then(r => {
+              if (!r.ok) throw new Error("Failed to create inning");
+              return r.json();
+            })
+            .then(data => {
+              document.getElementById("inningMsg").innerHTML =
+                `<p style="color:green;">Inning created (ID ${data.inningId})</p>`;
+            })
+            .catch(err => {
+              document.getElementById("inningMsg").innerHTML =
+                `<p style="color:red;">${err.message}</p>`;
+            });
+          };
+
+
+          /* --------- DELIVERY  JS ---------- */
+
+          // Helper – populate <select> with options from array of {id,name}
+          function fillSelect(sel, arr, idKey, labelKey, emptyLabel) {
+            sel.innerHTML = "";
+            if (emptyLabel) sel.appendChild(new Option(emptyLabel, ""));
+            arr.forEach(o => sel.appendChild(new Option(o[labelKey], o[idKey])));
+          }
+
+          /* ❶ MATCH list */
+          fetch(`${BASE_URL}/games`)
+            .then(r => r.json())
+            .then(games => {
+              const ms = document.getElementById("dMatchSel");
+              games.forEach(g => ms.appendChild(new Option(g.matchCode, g.gameId)));
+              if (games.length) ms.dispatchEvent(new Event("change"));
+            });
+
+          /* ❷ When match changes → load innings for that game */
+          document.getElementById("dMatchSel").onchange = function () {
+            const gameId = parseInt(this.value);
+            if (!gameId) return;
+
+            fetch(`${BASE_URL}/innings/byGame/${gameId}/mini`)   // returns [{inningId,…}]         // you'd expose this
+              .then(r => r.json())
+              .then(inns => {
+                const isel = document.getElementById("dInningSel");
+                fillSelect(isel,
+                  inns.map(i => ({
+                     id   : i.inningId,
+                     label: `${i.teamName} (ID ${i.teamId})`
+                  })),
+                  "id","label");
+                if (inns.length) isel.dispatchEvent(new Event("change"));
               });
           };
+
+          /* ❸ When inning changes → load squads to populate player dropdowns */
+          document.getElementById("dInningSel").onchange = function () {
+            const inningId = parseInt(this.value);
+            if (!inningId) return;
+
+            // a) get inning to know batting team and match (for bowling team)
+            fetch(`${BASE_URL}/innings/${inningId}`)
+              .then(r => r.json())
+              .then(inning => {
+                const battingId  = inning.team.teamId;
+                const matchId    = parseInt(document.getElementById("dMatchSel").value);
+
+                // b) fetch match -> know the bowling team
+                return fetch(`${BASE_URL}/games/${matchId}`)
+                  .then(r => r.json())
+                  .then(game => {
+                    const bowlingId = (game.team1.teamId === battingId)
+                                      ? game.team2.teamId : game.team1.teamId;
+                    return { battingId, bowlingId };
+                  });
+              })
+              .then(ids => {
+                // c) now fetch squads for both teams and populate selects
+                Promise.all([
+                  fetch(`${BASE_URL}/squads/mini/byTeam/${ids.battingId}`).then(r => r.json()),
+                  fetch(`${BASE_URL}/squads/mini/byTeam/${ids.bowlingId}`).then(r => r.json())
+                ]).then(([batSquad, bowlSquad]) => {
+                  const strikerSel  = document.getElementById("strikerSel");
+                  const nonStrkSel  = document.getElementById("nonStrikerSel");
+                  const bowlerSel   = document.getElementById("bowlerSel");
+                  const fielderSel  = document.getElementById("fielderSel");
+
+                  fillSelect(strikerSel,  batSquad, "playerId", "playerName");
+                  fillSelect(nonStrkSel,  batSquad, "playerId", "playerName");
+                  fillSelect(bowlerSel,   bowlSquad, "playerId", "playerName");
+                  fillSelect(fielderSel,  bowlSquad, "playerId", "playerName", "– None –");
+                });
+              });
+          };
+
+          /* ❹ Submit delivery */
+          document.getElementById("deliveryForm").onsubmit = function (e) {
+            e.preventDefault();
+
+            const body = {
+              inning:     { inningId: parseInt(document.getElementById("dInningSel").value) },
+              batsman:    { playerId: parseInt(document.getElementById("strikerSel").value) },
+              nonStriker: { playerId: parseInt(document.getElementById("nonStrikerSel").value) },
+              bowler:     { playerId: parseInt(document.getElementById("bowlerSel").value) },
+              fielder:    document.getElementById("fielderSel").value
+                            ? { playerId: parseInt(document.getElementById("fielderSel").value) }
+                            : null,
+
+              runsScored:  parseInt(document.getElementById("runsScored").value),
+              isWicket:    document.getElementById("isWicket").checked,
+              dismissalType: document.getElementById("dismissalType").value || null,
+              ballNumber:  parseInt(document.getElementById("ballNumber").value),
+              overNumber:  parseInt(document.getElementById("overNumber").value),
+              wideOrNoBall:document.getElementById("wideOrNoBall").checked
+            };
+
+            fetch(`${BASE_URL}/deliveries`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            })
+              .then(r => {
+                if (!r.ok) throw new Error("Failed to add delivery");
+                return r.json();
+              })
+              .then(d => {
+                document.getElementById("deliveryMsg").innerHTML =
+                  `<p style="color:green;">Delivery ID ${d.deliveryId} saved.</p>`;
+              })
+              .catch(err => {
+                document.getElementById("deliveryMsg").innerHTML =
+                  `<p style="color:red;">${err.message}</p>`;
+              });
+          };
+
           break;
 
         
