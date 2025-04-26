@@ -1,4 +1,4 @@
-window.onload = function () {
-    showSection('home');
-  };
+// window.onload = function () {
+//     showSection('home');
+//   };
   

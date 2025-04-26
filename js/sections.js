@@ -128,6 +128,7 @@ function postDelivery(delivery) {
 
 // Section router
 function showSection(section) {
+  localStorage.setItem('currentSection', section);  // <-- Save section name
   const container = document.getElementById("main-content");
   container.innerHTML = "";
 
@@ -917,3 +918,8 @@ function searchPerformance() {
       resultDiv.innerHTML = `<p style="color:red;">${err.message}</p>`;
     });
 }
+
+window.onload = function() {
+  const savedSection = localStorage.getItem('currentSection') || 'home'; // default to home
+  showSection(savedSection);
+};
