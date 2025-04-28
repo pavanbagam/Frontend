@@ -259,6 +259,9 @@ function showSection(section) {
               <label>Umpire:</label><br />
               <input type="text" id="umpire" required /><br /><br />
 
+              <label>Overs:</label><br />
+              <input type="number" id="overs" placeholder="Number of Overs" required /><br /><br />
+
               <label>Team 1:</label><br />
               <select id="team1" required></select><br /><br />
 
@@ -268,6 +271,12 @@ function showSection(section) {
               <label>Toss Winner:</label><br />
               <select id="tossWinner" required></select><br /><br />
 
+              <label>Chose to Bat:</label><br />
+              <select id="choseToBat" required>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select><br /><br />
+
               <label>Tournament ID (optional):</label><br />
               <input type="number" id="tournamentId" /><br /><br />
 
@@ -276,27 +285,7 @@ function showSection(section) {
             <div id="gameMessage" style="margin-top:1rem;"></div>
 
             
-            <hr />
-
-            <!-- INNING CREATION -->
-            <h3>Create Inning</h3>
-            <form id="inningForm">
-              <!-- ❶ Match selector (shows matchCode) -->
-              <label>Select Match (matchCode):</label><br />
-              <select id="matchSelect" required></select><br /><br />
-
-              <!-- ❷ Team selector – will be repopulated whenever match changes -->
-              <label>Batting Team:</label><br />
-              <select id="inningTeamSelect" required></select><br /><br />
-
-              <!-- ❸ Hidden / auto‑filled fields -->
-              <input type="hidden" id="initRuns"  value="0" />
-              <input type="hidden" id="initDeliv" value="0" />
-              <input type="hidden" id="initWkts"  value="0" />
-
-              <button type="submit">Create Inning</button>
-            </form>
-            <div id="inningMsg" style="margin-top:1rem;"></div>
+            
 
             <hr />
 
@@ -501,7 +490,9 @@ function showSection(section) {
               venue: document.getElementById("venue").value,
               type: document.getElementById("type").value,
               umpire: document.getElementById("umpire").value,
+              overs: parseInt(document.getElementById("overs").value, 10),
               tossWinner   : { teamId: parseInt(document.getElementById("tossWinner").value) },
+              choseToBat: document.getElementById("choseToBat").value === "true",
               tournament: document.getElementById("tournamentId").value
                 ? { tournamentId: parseInt(document.getElementById("tournamentId").value) }
                 : null,
@@ -534,93 +525,7 @@ function showSection(section) {
               });
           };
           
-          // === INNING CREATION ===
-          /* ------------  INNING  JS  ------------- */
-          // 1.  Populate the match dropdown with matchCode
-          fetch(`${BASE_URL}/games`)
-          .then(r => r.json())
-          .then(games => {
-            const matchSel = document.getElementById("matchSelect");
-            games.forEach(g => {
-              const opt = new Option(g.matchCode, g.gameId);   // value = gameId
-              matchSel.appendChild(opt);
-            });
-            // trigger first‑time load of team list
-            if (games.length) matchSel.dispatchEvent(new Event("change"));
-          });
-
-          // 2.  When a match is picked, load its two teams into the team dropdown
-          document.getElementById("matchSelect").onchange = function () {
-          const gameId = parseInt(this.value);
-          if (!gameId) return;
-
-          // fetch the single game to know its teams
-          fetch(`${BASE_URL}/games/${gameId}`)
-            .then(r => r.json())
-            .then(game => {
-              const teamSel   = document.getElementById("inningTeamSelect");
-              teamSel.innerHTML = "";                         // clear old entries
-
-              // helper to add <option> and then fetch squad size for that team
-              const addTeamOption = (teamObj) => {
-                const opt = new Option(teamObj.name || `Team ${teamObj.teamId}`,
-                                      teamObj.teamId);
-                teamSel.appendChild(opt);
-              };
-
-              addTeamOption(game.team1);
-              addTeamOption(game.team2);
-
-              // fire change so squad‑size logic below runs for first team
-              teamSel.dispatchEvent(new Event("change"));
-            });
-          };
-
-          // 3.  When batting‑team changes, look up squad size → wickets
-          document.getElementById("inningTeamSelect").onchange = function () {
-          const teamId = parseInt(this.value);
-          if (!teamId) return;
-
-          fetch(`${BASE_URL}/squads/count?teamId=` + teamId)
-            .then(r => r.json())
-            .then(count => {
-              document.getElementById("initWkts").value = count;
-            })
-            .catch(() => { document.getElementById("initWkts").value = 0; });
-          };
-
-          // 4.  Save inning
-          document.getElementById("inningForm").onsubmit = function (e) {
-          e.preventDefault();
-
-          const body = {
-            game: { gameId: parseInt(document.getElementById("matchSelect").value) },
-            team: { teamId: parseInt(document.getElementById("inningTeamSelect").value) },
-            totalRuns:    parseInt(document.getElementById("initRuns").value),
-            deliveries:   parseInt(document.getElementById("initDeliv").value),
-            wickets:      parseInt(document.getElementById("initWkts").value),
-            overs:        0                                   // start at 0 overs
-          };
-
-          fetch(`${BASE_URL}/innings`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-          })
-            .then(r => {
-              if (!r.ok) throw new Error("Failed to create inning");
-              return r.json();
-            })
-            .then(data => {
-              document.getElementById("inningMsg").innerHTML =
-                `<p style="color:green;">Inning created (ID ${data.inningId})</p>`;
-            })
-            .catch(err => {
-              document.getElementById("inningMsg").innerHTML =
-                `<p style="color:red;">${err.message}</p>`;
-            });
-          };
-
+          
 
           /* --------- DELIVERY  JS ---------- */
 
@@ -918,6 +823,7 @@ function searchPerformance() {
       resultDiv.innerHTML = `<p style="color:red;">${err.message}</p>`;
     });
 }
+
 
 window.onload = function() {
   const savedSection = localStorage.getItem('currentSection') || 'home'; // default to home
